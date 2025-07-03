@@ -1,0 +1,4 @@
+Assets are registered in a global registry before being loaded - different registry per type of asset
+Each registry key has 1. a string ID and 2. a filepath in the assets/ folder
+assets/ should be a mounted folder using love.filesystem.mount
+Before loading from assets/, src/assets/ should be copied without replacement to assets/
