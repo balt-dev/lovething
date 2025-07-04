@@ -7,8 +7,11 @@ Registry.assets = {}
 Registry.defaults = {}
 
 --- Register all files in a folder with a given suffix as assets to be loaded in this registry.
+---@param prefix string The asset prefix to load these assets under.
+---@param file_suffix string The file extension to load as assets.
+---@param default any The default asset to load if an attempt is made to load a nonexistent one.
 ---@param loadSingle (fun(data: love.FileData, meta: table?): any?)? Function used to load an asset using a given FileData.
-function Registry:registerFolder(prefix, file_suffix, postprefix, default, loadSingle)
+function Registry:registerFolder(prefix, file_suffix, default, loadSingle)
 	local items = NFS.getDirectoryItemsInfo("assets", "directory")
 	for _, item in pairs(items) do
 		local package_name = item.name
@@ -48,16 +51,18 @@ function Registry:registerPackage(prefix, folder_path, file_suffix, path, defaul
 	end
 end
 
---- Returns a function that can be called to pop the most recently loaded data.
+--- Returns a thread to start and function that can be called to pop the most recently loaded data, along with how many assets need to be loaded.
+--- @return love.Thread? thread Loading thread, not yet started.
+--- @return fun():any func Function to call to pop the most recent data. Will return nil if no data is available, or false if all data has been loaded.
+--- @return number toLoad Amount of assets that need to be loaded.
 function Registry:load(prefix)
-	if self.assetCount == 0 then return function() end end
+	if self.assetCount == 0 then return nil, function() return false end end
 	self.current = 0
 	local send = love.thread.getChannel("loadSend")
 	local recv = love.thread.getChannel("loadRecv")
-	love.thread.newThread [[
+	local loadThread = love.thread.newThread [[
 		ini = require "src.inifile"
 		require "src.logging"
-		love.timer = require "love.timer"
 
 		local recv = love.thread.getChannel("loadSend")
 		local send = love.thread.getChannel("loadRecv")
@@ -67,16 +72,14 @@ function Registry:load(prefix)
 			if res then
 				local id, file, meta = unpack(res)
 				debug("Loading " .. id)
-				love.timer.sleep(0.5)
 				if meta then
 					meta = ini.parse(love.filesystem.read(meta))
 				end
 				send:push({id, love.filesystem.read("data", file), meta or {}})
 			end
 		end
-		love.timer.sleep(0.5)
 		send:push(false)
-	]]:start()
+	]]
 	local toLoad = 0
 	for id, pair in pairs(self.assetsToLoad[prefix]) do
 		send:push {id, unpack(pair)}
@@ -84,7 +87,7 @@ function Registry:load(prefix)
 		self.assetsToLoad[prefix][id] = nil
 	end
 	send:push(false)
-	return function()
+	return loadThread, function()
 		local data = recv:pop()
 		if data == nil then return end
 		if data == false then return false end

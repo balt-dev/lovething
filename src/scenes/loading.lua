@@ -85,10 +85,6 @@ function S:init()
 					self.config.text = (this.lastLoaded and ("Loaded %s"):format(this.lastLoaded)) or ""
 				end}
 			},
-			{
-				type = UI.NODE.DIV,
-				config = { text = "this screen has been\nintentionally slowed for\ndemonstration purposes", color = {1, 1, 1, 1}, font_size = {1.5, "x"}, align = UI.ALIGN.BOTTOM}
-			},
 			{}
 		},
 		{}
@@ -97,7 +93,7 @@ end
 
 function S:update(dt)
 	Scene.update(self, dt)
-	if love.timer.getTime() < 1 then return end
+	if love.timer.getTime() < 0.8 then return end
 	if self.doneSince then
 		if (love.timer.getTime() - self.doneSince) > 0.4 then
 			Scene.switch("ui_test")
@@ -114,7 +110,8 @@ function S:update(dt)
 		debug("Loading " .. self.currentRegistry .. "...")
 		self.loadCount = 0
 		self.lastLoaded = nil
-		self.recv, self.currentTotal = G.REGISTRY:load(self.currentRegistry)
+		thread, self.recv, self.currentTotal = G.REGISTRY:load(self.currentRegistry)
+		thread:start()
 	end
 	local currTimer = love.timer.getTime()
 	while love.timer.getTime() - currTimer < 0.1 do

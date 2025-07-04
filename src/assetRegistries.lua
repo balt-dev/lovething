@@ -2,8 +2,7 @@ local missingTex = love.graphics.newImage("assets/base/textures/missing.png")
 missingTex:setFilter("nearest", "nearest")
 
 G.REGISTRY:registerFolder(
-	"textures", "png", "",
-	missingTex,
+	"textures", "png", missingTex,
 	function(data, meta)
 		local min, mag = "nearest", "nearest"
 		if meta.min then
@@ -23,7 +22,7 @@ G.REGISTRY:registerFolder(
 local cached_default_fonts = {}
 
 G.REGISTRY:registerFolder(
-	"fonts", "ttf", "",
+	"fonts", "ttf",
 	function(size)
 		size = math.floor(size)
 		if rawget(G.REGISTRY.assets.fonts, "base.default") then
