@@ -8,10 +8,8 @@ end
 local function forward_to_entities(fn_names)
 	for _, fn in ipairs(fn_names) do
 		T[fn] = function(self, ...)
-			if self.entities then
-				for _, entity in pairs(self.entities) do
-					if entity[fn] then entity[fn](entity, ...) end
-				end
+			for _, entity in self:ents() do
+				if entity[fn] then entity[fn](entity, ...) end
 			end
 		end
 	end
@@ -24,19 +22,21 @@ forward_to_entities {
 }
 
 function T:ents()
-	local it_s, st_s = pairs(self.entities)
-	local it_w, st_w = pairs(self.weak_entities)
-	local strong_ended = false
-	return function(st, prev)
-		strong_ended = strong_ended or st == nil
-		if strong_ended then return it_w(st, prev) end
-		local k, v = it_s(st, prev)
-		if k == nil then
-			strong_ended = true
-			return it_w(st_w)
+	local iter, st, val = pairs(self.entities)
+	return function()
+		local k, v = iter(st, val)
+		if k ~= nil then val = k return k, v end
+		if st == self.entities then
+			iter, st, val = pairs(self.weak_entities)
+			k, v = iter(st, val)
+			if k ~= nil then val = k return k, v end
 		end
-		return k, v
-	end, st_s
+	end
+end
+
+function T.switch(id, ...)
+	G.CURRENT_SCENE:teardown()
+	G.CURRENT_SCENE = G.SCENES[id]:new(...)
 end
 
 return T

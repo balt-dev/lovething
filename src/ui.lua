@@ -61,14 +61,23 @@ local ui = UI.NodeEntity:from {
 --]]
 
 
-local function calc_sizes(unit_list, available_space)
+local function calc_sizes(unit_list, available_space, child_count, font_size, offset)
 	local orig_space = available_space
 	local sizes = {}
+	local ul = {}
 	local fr_denom = 0
-	for i, unit in ipairs(unit_list) do
+	for i = 1, child_count do
+		ul[i] = (unit_list and unit_list[i]) or {1, "fr"}
+	end
+	for i, unit in ipairs(ul) do
 		if unit[2] == "px" then
-			available_space = available_space - unit[1]
-			sizes[i] = {unit[1], 0}
+			local size = unit[1] * love.graphics.getDPIScale()
+			available_space = available_space - size
+			sizes[i] = {size, offset}
+		elseif unit[2] == "em" then
+			local size = unit[1] * font_size
+			available_space = available_space - size
+			sizes[i] = {size, offset}
 		elseif unit[2] == "fr" then
 			fr_denom = fr_denom + unit[1]
 		end
@@ -77,14 +86,14 @@ local function calc_sizes(unit_list, available_space)
 		if available_space > 0 then
 			local gap_size = available_space / #sizes
 			for i, size in ipairs(sizes) do
-				size[i][2] = gap_size * (i - 1)
+				size[i][2] = size[i][2] + gap_size * (i - 1)
 			end
 		end
 		return sizes
 	end
-	for i, unit in ipairs(unit_list) do
+	for i, unit in ipairs(ul) do
 		if unit[2] == "fr" then
-			sizes[i] = {(unit[1] / fr_denom) * available_space, 0}
+			sizes[i] = {(unit[1] / fr_denom) * available_space, offset}
 		end
 	end
 	return sizes
@@ -92,9 +101,12 @@ end
 
 T.NodeEntity = Entity:new(NodeEntity)
 
-local function layout_ui_tree(scene, tree, ent)
+local DEFAULT_FONT_SIZE = 15
+
+local function layout_ui_tree(scene, tree, ent, font, font_size)
 	if ent.dirty then return end
 	ent.dirty = true
+	tree.config = tree.config or {}
 	ent.config = tree.config
 	ent.type = tree.type
 	if ent.type == T.NODE.ROOT then
@@ -103,8 +115,17 @@ local function layout_ui_tree(scene, tree, ent)
 	ent.children = {}
 	local sizes
 	local l, t, b, r = 0, 0, 0, 0
-	if tree.config and tree.config.margin then
-		local margin = tree.config.margin
+
+	font_size = font_size or DEFAULT_FONT_SIZE
+
+	font = font or love.graphics.getFont()
+	if ent.config.font then
+		font = G.REGISTRY.assets.fonts[ent.config.font](math.floor(font_size)) or font
+	end
+
+
+	if ent.config.margin then
+		local margin = ent.config.margin
 		if type(margin) == "number" then
 			l = margin t = l b = l r = l
 		elseif #margin == 2 then
@@ -115,25 +136,30 @@ local function layout_ui_tree(scene, tree, ent)
 			l, t, b, r = unpack(margin)
 		end
 	end
+	if ent.config.font_size then
+		if ent.config.font_size[2] == "x" then font_size = font_size * ent.config.font_size[1]
+		elseif ent.config.font_size[2] == "h" then font_size = ent.h * ent.config.font_size[1]
+		elseif ent.config.font_size[2] == "px" then font_size = ent.config.font_size[1] * love.graphics.getDPIScale()
+		end
+	end
+	local child_count = #tree
 	if tree.type == T.NODE.ROWS then
-		sizes = calc_sizes(tree.config.sizes, ent.h - t - b)
+		sizes = calc_sizes(tree.config.sizes, ent.h - t - b, child_count, font_size, t)
 	elseif tree.type == T.NODE.COLUMNS then
-		sizes = calc_sizes(tree.config.sizes, ent.w - l - r)
+		sizes = calc_sizes(tree.config.sizes, ent.w - l - r, child_count, font_size, l)
 	else
 		sizes = {{ent.w - l - r, ent.x + l}}
 	end
 	local ox, oy = 0, 0
 	for i, child in ipairs(tree) do
-		local x, y, w, h
+		local x, w, y, h = l, ent.w - l - r, t, ent.h - t - b
 		if tree.type == T.NODE.ROWS then
-			x, w = ent.x + l, ent.w - l - r
-			h, y = unpack(sizes[i])
-			x, y = x + ox, y + oy
+			h = sizes[i][1]
+			x, y = sizes[i][2] + ox, y + oy
 			oy = oy + h
 		else
-			w, x = unpack(sizes[i])
-			y, h = ent.y + t, ent.h - t - b
-			x, y = x + ox, y + oy
+			w = sizes[i][1]
+			x, y = sizes[i][2] + ox, y + oy
 			ox = ox + w
 		end
 		if child.type then
@@ -142,6 +168,8 @@ local function layout_ui_tree(scene, tree, ent)
 			child_ent:weak_add(scene)
 		end
 	end
+	ent.margins = {left = l, top = t, bottom = b, right = r}
+	ent.calc_font_size = font_size
 	ent.dirty = false
 end
 
@@ -155,22 +183,26 @@ function NodeEntity:init(scene, x, y, w, h, tree)
 end
 
 function NodeEntity:update(dt)
-	local conf = self.config or {}
-	if conf.update then
-		conf.update(self, dt)
-	end
-	for _, child in ipairs(self.children) do
-		child:update(dt)
+	if self.config.update then
+		self.config.update(self, dt)
 	end
 end
 
-function NodeEntity:draw()
+function NodeEntity:draw(depth, font)
+	if not depth and self.type ~= T.NODE.ROOT then return end
+	depth = depth or 1
+
 	local conf = self.config or {}
 	local x, y, w, h = self.x, self.y, self.w, self.h
+	if self.w < 0 or self.h < 0 then return end
 
 	love.graphics.push("all")
 
-	if conf.pre_draw then conf.pre_draw(self, x, y, w, h) end
+	font = conf.font or font
+
+	love.graphics.setFont(G.REGISTRY.assets.fonts[font or ""](math.floor(self.calc_font_size)))
+	-- This cascades to the child nodes, as should be expected
+
 	if conf.scale then
 		love.graphics.translate(w/2, h/2)
 		love.graphics.scale(conf.scale, conf.scale)
@@ -179,13 +211,26 @@ function NodeEntity:draw()
 	if conf.rotate then
 		love.graphics.rotate(conf.rotate)
 	end
+	local tx, ty = x, y
 	if conf.translate then
-		love.graphics.translate(conf.translate.x, conf.translate.y)
+		tx, ty = tx + conf.translate.x, ty + conf.translate.y
 	end
-	if conf.transform then
-		love.graphics.replaceTransform(conf.transform)
+	love.graphics.translate(math.floor(tx), math.floor(ty))
+
+	love.graphics.stencil(function()
+		if conf.border_radius then
+			love.graphics.rectangle("fill", 0, 0, w, h, conf.border_radius, conf.border_radius, 16)
+		else
+			love.graphics.rectangle("fill", 0, 0, w, h)
+		end
+    end, "replace", depth + 1, false)
+
+	if not conf.overflow then
+	    love.graphics.setStencilTest("greater", depth)
 	end
-	love.graphics.translate(x, y)
+
+	if conf.pre_draw then conf.pre_draw(self, x, y, w, h) end
+
 	if conf.background_color then
 		love.graphics.setColor(unpack(conf.background_color))
 		if conf.border_radius then
@@ -194,16 +239,26 @@ function NodeEntity:draw()
 			love.graphics.rectangle("fill", 0, 0, w, h)
 		end
 	end
-	if conf.border_color and conf.border_width and conf.border_radius then
-		love.graphics.setColor(unpack(conf.background_color))
-		love.graphics.setLineWidth(conf.border_width * math.min(w, h))
-		if conf.border_radius then
-			love.graphics.rectangle("line", 0, 0, w, h, conf.border_radius, conf.border_radius, 16)
+	if conf.background_image then
+		---@type love.Texture
+		local tex = G.REGISTRY.assets.textures[conf.background_image]
+		if conf.nine_slice then
+			nine_slice(tex, 0, 0, w, h, conf.nine_slice)
 		else
-			love.graphics.rectangle("line", 0, 0, w, h)
+			local tw, th = tex:getDimensions()
+			love.graphics.draw(tex, 0, 0, 0, w / tw, h / th)
 		end
 	end
-	-- TODO: Nine-slices?
+	if conf.border_color and conf.border_width then
+		love.graphics.setColor(unpack(conf.border_color))
+		love.graphics.setLineWidth(conf.border_width)
+		local hw = conf.border_width / 2
+		if conf.border_radius then
+			love.graphics.rectangle("line", hw, hw, w - hw * 2, h - hw * 2, conf.border_radius, conf.border_radius, 16)
+		else
+			love.graphics.rectangle("line", hw, hw, w - hw * 2, h - hw * 2)
+		end
+	end
 	if conf.color then
 		love.graphics.setColor(unpack(conf.color))
 	else
@@ -213,28 +268,33 @@ function NodeEntity:draw()
 	if conf.text then
 		local font = love.graphics.getFont()
 		local text_width = font:getWidth(conf.text)
-		local text_height = font:getHeight()
-	    love.graphics.stencil(function()
-	    	love.graphics.clear({}, true)
-	    	love.graphics.rectangle("fill", 0, 0, w, h)
-	    end, "replace", 1)
-        love.graphics.setStencilTest("greater", 0)
-        local ox, oy = (conf.text_align or T.ALIGN.CENTER)(w - text_width, h - text_height)
-        love.graphics.print(conf.text, math.floor(ox), math.floor(oy))
-	    love.graphics.setStencilTest()
+		local lines = 1
+		for _ in conf.text:gmatch("\n") do lines = lines + 1 end
+		local text_height = self.calc_font_size * (lines + 0.25)
+        local ox, oy = (conf.align or T.ALIGN.CENTER)(w - text_width, h - text_height)
+        love.graphics.push()
+        love.graphics.translate(math.floor(ox), math.floor(oy))
+        love.graphics.print(conf.text, 0, 0)
+        love.graphics.pop()
 	end
 
-	for _, child in ipairs(self.children) do
-		child:draw()
+	if UI._DEBUG then
+		love.graphics.setFont(G.REGISTRY.assets.fonts[""](DEFAULT_FONT_SIZE))
+	    love.graphics.print(self.uuid, 0, 0)
 	end
 
 	if conf.post_draw then conf.post_draw(self, x, y, w, h) end
+
+	for _, child in ipairs(self.children) do
+		child:draw(depth + 1, font)
+	end
+
+	love.graphics.setStencilTest()
 
 	love.graphics.pop()
 end
 
 function NodeEntity:resize(w, h)
-	print("Recalculating layout")
 	if self.type ~= T.NODE.ROOT then return end
 	if not self.scene then return end
 	self.w = w
@@ -242,6 +302,74 @@ function NodeEntity:resize(w, h)
 	self.children = {}
 	layout_ui_tree(self.scene, self.tree, self)
 end
+
+function NodeEntity:hit_test(x, y)
+	if x >= 0 and y >= 0 and x < self.w and y < self.h then
+		return self
+	end
+end
+
+function NodeEntity:hit_test_recursive(x, y)
+	local conf = self.config
+	local tr = love.math.newTransform(((conf.translate and conf.translate.x) or 0) + self.x, ((conf.translate and conf.translate.y) or 0) + self.y, conf.rotate or 0, conf.scale or 1, conf.scale or 1)
+	x, y = tr:inverseTransformPoint(x, y)
+	for i = #self.children, 1, -1 do
+		local child = self.children[i]
+
+		local res = child:hit_test_recursive(x, y)
+		if res then return res end
+	end
+	return self:hit_test(x, y)
+end
+
+function NodeEntity:mousemoved(x, y)
+	local was_hovered = self.config.was_hovered
+	if self.type ~= T.NODE.ROOT and not was_hovered then return end
+	local hit = self:hit_test_recursive(x, y)
+	if was_hovered and hit ~= self then
+		self.config.was_hovered = false
+		if self.config.onmouseexit then
+			self.config.onmouseexit(self)
+		end
+	end
+	if not hit then return end
+	if not hit.config.was_hovered then
+		hit.config.was_hovered = true
+		if hit.config.onmouseenter then
+			hit.config.onmouseenter(hit)
+		end
+	end
+end
+
+function NodeEntity:mousepressed(x, y, ...)
+	if self.type ~= T.NODE.ROOT then return end
+	local hit = self:hit_test_recursive(x, y)
+	if not hit then return end
+	debug("at " .. x .. ", " .. y .. ": " .. tstr(hit))
+	if hit.config.onclick then
+		hit.config.onclick(hit, x - hit.x, y - hit.y, ...)
+	end
+end
+
+function NodeEntity:mousereleased(x, y, ...)
+	if self.type ~= T.NODE.ROOT then return end
+	local hit = self:hit_test_recursive(x, y)
+	if not hit then return end
+	if hit.config.onunclick then
+		hit.config.onunclick(hit, x - hit.x, y - hit.y, ...)
+	end
+end
+
+function NodeEntity:wheelmoved(dx, dy)
+	if self.type ~= T.NODE.ROOT then return end
+	local x, y = love.mouse.getPosition()
+	local hit = self:hit_test_recursive(x, y)
+	if not hit then return end
+	if hit.config.onscroll then
+		hit.config.onscroll(hit, x - hit.x, y - hit.y)
+	end
+end
+
 
 function Scene:addUI(def)
 	local w, h = love.graphics.getDimensions()

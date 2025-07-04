@@ -1,20 +1,16 @@
 require "src"
 
 function love.load()
-    G.CURRENT_SCENE = LoadingScene:new()
+    G.CURRENT_SCENE = G.SCENES.loading:new()
 end
 
 function love.update(dt)
 	G.CURRENT_SCENE:update(dt)
-	--[[for id, ent in G.CURRENT_SCENE:ents() do
-		print(id)
-	end]]
 end
 
 function love.resize(w, h)
 	G.CURRENT_SCENE:resize(w, h)
 end
-
 
 function love.draw()
 	G.CURRENT_SCENE:draw()
@@ -60,11 +56,9 @@ function love.wheelmoved(x, y)
 	G.CURRENT_SCENE:wheelmoved(x, y)
 end
 
---[[function love.errorhandler(msg)
-	G.CURRENT_SCENE = ErrorScene:new {
-		message = msg
-	}
-end]]
+function love.threaderror(thread, err)
+	error("Fatal error in child thread: " .. err)
+end
 
 function love.quit()
 	G.CURRENT_SCENE:teardown()
