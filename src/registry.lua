@@ -67,14 +67,14 @@ function Registry:load(prefix)
 			if res then
 				local id, file, meta = unpack(res)
 				debug("Loading " .. id)
-				love.timer.sleep(1)
+				love.timer.sleep(0.5)
 				if meta then
 					meta = ini.parse(love.filesystem.read(meta))
 				end
 				send:push({id, love.filesystem.read("data", file), meta or {}})
 			end
 		end
-		love.timer.sleep(1)
+		love.timer.sleep(0.5)
 		send:push(false)
 	]]:start()
 	local toLoad = 0
