@@ -22,7 +22,6 @@ function Registry:registerFolder(prefix, file_suffix, default, loadSingle)
 end
 
 function Registry:registerPackage(prefix, folder_path, file_suffix, path, default, loadSingle)
-	toLoad = toLoad or self.assetsToLoad[prefix]
 	if loadSingle then
 		self.assetLoaders[prefix] = loadSingle
 	end
@@ -46,7 +45,7 @@ function Registry:registerPackage(prefix, folder_path, file_suffix, path, defaul
 			end
 			self.assetCount = self.assetCount + 1
 		elseif item.type == "directory" then
-			self:registerFolder(folder_path .. PATH_SEP .. item.name, file_suffix, prefix, path .. item.name .. ".", default)
+			self:registerPackage(prefix, folder_path .. PATH_SEP .. item.name, file_suffix, path .. item.name .. ".", default)
 		end
 	end
 end
