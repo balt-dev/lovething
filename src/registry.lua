@@ -7,7 +7,7 @@ Registry.assets = {}
 Registry.defaults = {}
 
 --- Register all files in a folder with a given suffix as assets to be loaded in this registry.
----@param loadSingle (fun(data: love.FileData, meta: table?): any?)?
+---@param loadSingle (fun(data: love.FileData, meta: table?): any?)? Function used to load an asset using a given FileData.
 function Registry:registerFolder(prefix, file_suffix, postprefix, default, loadSingle)
 	local items = NFS.getDirectoryItemsInfo("assets", "directory")
 	for _, item in pairs(items) do

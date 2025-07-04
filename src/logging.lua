@@ -1,11 +1,11 @@
 
 local logChannel = love.thread.getChannel("logging")
 
+dbg = debug
+
 function trace(msg)
 	logChannel:push{5, msg}
 end
-
-dbg = debug
 
 function debug(msg)
 	logChannel:push{4, msg}

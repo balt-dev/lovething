@@ -57,7 +57,7 @@ function love.wheelmoved(x, y)
 end
 
 function love.threaderror(thread, err)
-	error("Fatal error in child thread: " .. err)
+	error("Fatal error in " .. tostring(thread) .. ": " .. err)
 end
 
 function love.quit()

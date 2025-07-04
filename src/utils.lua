@@ -24,10 +24,13 @@ local function isIdent(str)
         })[str]
 end
 
-function isSane(value)
+local function isSane(value)
 	return type(value) ~= "table" and (type(value) ~= "string" or #value < 16)
 end
 
+--- Turns a table into a string.
+--- @param tbl table
+--- @return string
 function tstr(tbl, seen, indent)
 	if type(tbl) == "string" then
 		return ("%q"):format(tbl)

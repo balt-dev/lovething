@@ -21,6 +21,7 @@ forward_to_entities {
 	"wheelmoved"
 }
 
+--- Iterates through all entities in the scene.
 function T:ents()
 	local iter, st, val = pairs(self.entities)
 	return function()
@@ -34,7 +35,12 @@ function T:ents()
 	end
 end
 
+--- Switches to another scene with a given ID.
 function T.switch(id, ...)
+	if not G.SCENES[id] then
+		warn("Tried to switch to nonexistent scene " .. id)
+		return
+	end
 	G.CURRENT_SCENE:teardown()
 	G.CURRENT_SCENE = G.SCENES[id]:new(...)
 end
