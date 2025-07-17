@@ -35,14 +35,10 @@ function T:ents()
 	end
 end
 
---- Switches to another scene with a given ID.
-function T.switch(id, ...)
-	if not G.SCENES[id] then
-		warn("Tried to switch to nonexistent scene " .. id)
-		return
-	end
+--- Switches to another scene.
+function T.switch(scene)
 	G.CURRENT_SCENE:teardown()
-	G.CURRENT_SCENE = G.SCENES[id]:new(...)
+	G.CURRENT_SCENE = scene
 end
 
 return T

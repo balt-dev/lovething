@@ -15,10 +15,10 @@ Class = require "src.class"
 Scene = require "src.scene"
 Weak = require "src.weak"
 
-G.REGISTRY = require "src.registry"
+G.REGISTRY_MANAGER = require "src.registry"
+G.REGISTRIES = G.REGISTRY_MANAGER.registries
 require "src.assetRegistries"
 
 Entity = require "src.entity"
 UI = require "src.ui"
-require "src.scenes"
 

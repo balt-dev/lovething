@@ -1,4 +1,7 @@
+---@class Singleton
 
+---@param label string The singleton's label.
+---@return Singleton
 return function(label)
 	local t = {}
 	label = label or ("<anon: " .. tostring("t"):sub(7) .. ">")

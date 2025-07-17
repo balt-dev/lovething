@@ -1,7 +1,7 @@
 require "src"
 
 function love.load()
-    G.CURRENT_SCENE = G.SCENES.loading:new()
+    G.CURRENT_SCENE = (require "src.loadingScene"):new()
 end
 
 function love.update(dt)

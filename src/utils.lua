@@ -159,5 +159,12 @@ function nine_slice(tex, x, y, w, h, scale)
     return hmid, right, vmid, bottom
 end
 
-
-return Mod
+--- Returns a shallow copy of this table.
+function table:copy()
+	if type(self) ~= "table" then error("cannot copy non-table", 2) end
+	local t = {}
+	for k, v in pairs(self) do
+		t[k] = v
+	end
+	return t
+end

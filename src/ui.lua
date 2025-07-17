@@ -120,7 +120,7 @@ local function layout_ui_tree(scene, tree, ent, font, font_size)
 
 	font = font or love.graphics.getFont()
 	if ent.config.font then
-		font = G.REGISTRY.assets.fonts[ent.config.font](math.floor(font_size)) or font
+		font = G.REGISTRIES.fonts(ent.config.font)(math.floor(font_size)) or font
 	end
 
 
@@ -200,7 +200,7 @@ function NodeEntity:draw(depth, font)
 
 	font = conf.font or font
 
-	love.graphics.setFont(G.REGISTRY.assets.fonts[font or ""](math.floor(self.calc_font_size)))
+	love.graphics.setFont(G.REGISTRIES.fonts(font or "")(math.floor(self.calc_font_size)))
 	-- This cascades to the child nodes, as should be expected
 
 	if conf.scale then
@@ -241,7 +241,7 @@ function NodeEntity:draw(depth, font)
 	end
 	if conf.background_image then
 		---@type love.Texture
-		local tex = G.REGISTRY.assets.textures[conf.background_image]
+		local tex = G.REGISTRIES.textures(conf.background_image)
 		if conf.nine_slice then
 			nine_slice(tex, 0, 0, w, h, conf.nine_slice)
 		else
@@ -279,7 +279,7 @@ function NodeEntity:draw(depth, font)
 	end
 
 	if UI._DEBUG then
-		love.graphics.setFont(G.REGISTRY.assets.fonts[""](DEFAULT_FONT_SIZE))
+		love.graphics.setFont(G.REGISTRIES.fonts.default(DEFAULT_FONT_SIZE))
 	    love.graphics.print(self.uuid, 0, 0)
 	end
 
