@@ -61,3 +61,38 @@ function UI.Button(clickCallback, settings)
 		config = config
 	}
 end
+
+local function signum(val)
+	return (val == 0 and 1) or (val / math.abs(val))
+end
+
+function UI.Scrollbox(children, settings)
+	settings = settings or {}
+	settings.direction = settings.direction or "vertical"
+	settings.per_unit = settings.per_unit or 16
+	settings.collapse_children = true
+	settings.end_margin = settings.end_margin or (
+		settings.base_size and settings.base_size[2] == "px" and settings.base_size[1]
+	) or 40
+	local config = {
+		scroll_pos = 0,
+		child_translate = {x = 0, y = 0},
+		onscroll = function(self, x, y, dx, dy)
+			local mag = math.sqrt(dx * dx + dy * dy) * signum(dx) * signum(dy)
+			mag = mag * settings.per_unit
+			if settings.direction == "vertical" then
+				self.config.child_translate.y = math.max(math.min(self.config.child_translate.y + mag, 0), -self.used_space + settings.end_margin)
+			else
+				self.config.child_translate.x = math.max(math.min(self.config.child_translate.x + mag, 0), -self.used_space + settings.end_margin)
+			end
+		end
+	}
+	for key, value in pairs(settings) do
+		config[key] = value
+	end
+	return {
+		type = (settings.direction == "vertical" and UI.NODE.ROWS) or UI.NODE.COLUMNS,
+		config = config,
+		unpack(children)
+	}
+end

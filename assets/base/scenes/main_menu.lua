@@ -9,4 +9,9 @@ function S:init()
 	}
 end
 
+function S:update(dt)
+	Scene.update(self, dt)
+	Scene.switch(G.REGISTRIES.scenes("base", "scene_chooser"):new())
+end
+
 return S
