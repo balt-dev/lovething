@@ -113,10 +113,12 @@ function S:update(dt)
 	end
 
 	local lastUpdate = love.timer.getTime()
+	local firstIter = true
 
 	local done = true
 	local toRemove = {}
-	while love.timer.getTime() - lastUpdate < 0.01 do
+	while love.timer.getTime() - lastUpdate <= 0.02 or firstIter do
+		firstIter = false
 		for key, coro in pairs(self.loadCoroutines) do
 			done = false
 			if coroutine.status(coro) == "dead" then table.insert(toRemove, key)
