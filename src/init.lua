@@ -21,4 +21,4 @@ require "src.assetRegistries"
 
 Entity = require "src.entity"
 UI = require "src.ui"
-
+require "src.uiHelpers"

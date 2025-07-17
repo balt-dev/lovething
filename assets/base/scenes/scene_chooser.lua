@@ -11,10 +11,10 @@ function S:init()
 		},
 		{
 			type = UI.NODE.ROWS,
-			config = { margin = 30, background_color = { 1, 0, 0, 1 }, border_radius = 40, },
+			config = { padding = 30, background_color = { 1, 0, 0, 1 }, border_radius = 40, },
 			{
 				type = UI.NODE.COLUMNS,
-				config = { background_color = { 0.5, 0, 0, 1 }, border_width = 3, border_color = { 0, 0, 0, 1 }, overflow = true },
+				config = { background_color = { 0.5, 0, 0, 1 }, border_width = 3, border_color = { 0, 0, 0, 1 }, overflow = true, margin = 20 },
 				{
 					type = UI.NODE.DIV,
 					config = { background_color = { 0, 1, 0, 1 }, translate = {x = 50, y = 0},
@@ -22,31 +22,11 @@ function S:init()
 					}
 				},
 			},
-			{
-				type = UI.NODE.DIV,
-				config = {
-					background_color = { 0, 0, 0, 0.2 },
-					clicks = 0,
-					text = "clicks: 0",
-					onclick = function(self, x, y)
-						self.config.clicks = self.config.clicks + 1
-						self.config.text = ("clicks: %d"):format(self.config.clicks)
-						self.config.background_color = {0, 0, 0, 0.8}
-					end,
-					onunclick = function(self, x, y)
-						self.config.background_color = {0, 0, 0, 0.7}
-					end,
-					onmouseenter = function(self)
-						self.config.background_color = {0, 0, 0, 0.7}
-						self.config.prevCursor = love.mouse.getCursor()
-						love.mouse.setCursor(love.mouse.getSystemCursor("hand"))
-					end,
-					onmouseexit = function(self)
-						self.config.background_color = {0, 0, 0, 0.2}
-						love.mouse.setCursor(self.config.prevCursor or love.mouse.getSystemCursor("arrow"))
-					end
-				}
-			},
+			UI.Button(function(self, x, y)
+				self.config.clicks = self.config.clicks + 1
+				self.config.text = ("clicks: %d"):format(self.config.clicks)
+				self.config.background_color = {0, 0, 0, 0.8}
+			end, {margin = 20, text = "clicks: 0", clicks = 0})
 		},
 		{}, -- Spacer nodes are empty
 		{
@@ -73,16 +53,7 @@ function S:init()
 					background_image = ""
 				}
 			},
-			{
-				type = UI.NODE.DIV,
-				config = {
-					background_color = { 0, 0, 0, 0.2 },
-					text = "Click to crash",
-					onclick = function(self, x, y)
-						error(":clueless:")
-					end,
-				}
-			},
+			UI.Button(function() error(":clueless:") end, {text = "Click to crash"})
 		},
 	}
 end

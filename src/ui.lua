@@ -1,6 +1,6 @@
-local T = {}
+local UI = {}
 
-T.NODE = {
+UI.NODE = {
 	-- The root element of the UI tree.
 	ROOT = Singleton("ROOT"),
 	-- Splits the given space into equal segments top-to-bottom.
@@ -13,7 +13,7 @@ T.NODE = {
 	SPACER = Singleton("SPACER"),
 }
 
-T.ALIGN = {
+UI.ALIGN = {
 	TOP_LEFT = function(w, h) return 0, 0 end,
 	TOP = function(w, h) return w / 2, 0 end,
 	TOP_RIGHT = function(w, h) return w, 0 end,
@@ -99,7 +99,7 @@ local function calc_sizes(unit_list, available_space, child_count, font_size, of
 	return sizes
 end
 
-T.NodeEntity = Entity:new(NodeEntity)
+UI.NodeEntity = Entity:new(NodeEntity)
 
 local DEFAULT_FONT_SIZE = 15
 
@@ -109,7 +109,7 @@ local function layout_ui_tree(scene, tree, ent, font, font_size)
 	tree.config = tree.config or {}
 	ent.config = tree.config
 	ent.type = tree.type
-	if ent.type == T.NODE.ROOT then
+	if ent.type == UI.NODE.ROOT then
 		ent.tree = tree
 	end
 	ent.children = {}
@@ -123,19 +123,32 @@ local function layout_ui_tree(scene, tree, ent, font, font_size)
 		font = G.REGISTRIES.fonts(ent.config.font)(math.floor(font_size)) or font
 	end
 
-
 	if ent.config.margin then
-		local margin = ent.config.margin
-		if type(margin) == "number" then
-			l = margin t = l b = l r = l
-		elseif #margin == 2 then
-			l = margin[1]
-			t = margin[2]
-			b = t r = l
+		local pad = ent.config.margin
+		if type(pad) == "number" then
+			l, t, r, b = l + pad, t + pad, r + pad, b + pad
 		else
-			l, t, b, r = unpack(margin)
+			local L, T, R, B = unpack(pad)
+			if R == nil then R = L end
+			if B == nil then B = T end
+			l, t, r, b = l + L, t + T, r + R, b + B
 		end
 	end
+
+	local L, T, R, B = l, t, r, b
+
+	if ent.config.padding then
+		local pad = ent.config.padding
+		if type(pad) == "number" then
+			L, T, R, B = L + pad, T + pad, R + pad, B + pad
+		else
+			local l, t, r, b = unpack(pad)
+			if r == nil then r = l end
+			if b == nil then b = t end
+			L, T, R, B = l + L, t + T, r + R, b + B
+		end
+	end
+
 	if ent.config.font_size then
 		if ent.config.font_size[2] == "x" then font_size = font_size * ent.config.font_size[1]
 		elseif ent.config.font_size[2] == "h" then font_size = ent.h * ent.config.font_size[1]
@@ -143,17 +156,17 @@ local function layout_ui_tree(scene, tree, ent, font, font_size)
 		end
 	end
 	local child_count = #tree
-	if tree.type == T.NODE.ROWS then
-		sizes = calc_sizes(tree.config.sizes, ent.h - t - b, child_count, font_size, t)
-	elseif tree.type == T.NODE.COLUMNS then
-		sizes = calc_sizes(tree.config.sizes, ent.w - l - r, child_count, font_size, l)
+	if tree.type == UI.NODE.ROWS then
+		sizes = calc_sizes(tree.config.sizes, ent.h - T - B, child_count, font_size, T)
+	elseif tree.type == UI.NODE.COLUMNS then
+		sizes = calc_sizes(tree.config.sizes, ent.w - L - R, child_count, font_size, L)
 	else
-		sizes = {{ent.w - l - r, ent.x + l}}
+		sizes = {{ent.w - L - R, ent.x + L}}
 	end
 	local ox, oy = 0, 0
 	for i, child in ipairs(tree) do
-		local x, w, y, h = l, ent.w - l - r, t, ent.h - t - b
-		if tree.type == T.NODE.ROWS then
+		local x, w, y, h = L, ent.w - L - R, T, ent.h - T - B
+		if tree.type == UI.NODE.ROWS then
 			h = sizes[i][1]
 			x, y = sizes[i][2] + ox, y + oy
 			oy = oy + h
@@ -163,12 +176,13 @@ local function layout_ui_tree(scene, tree, ent, font, font_size)
 			ox = ox + w
 		end
 		if child.type then
-			local child_ent = T.NodeEntity:new({}, scene, x, y, w, h, child)
+			local child_ent = UI.NodeEntity:new({}, scene, x, y, w, h, child)
 			table.insert(ent.children, child_ent)
 			child_ent:weak_add(scene)
 		end
 	end
-	ent.margins = {left = l, top = t, bottom = b, right = r}
+	ent.margin = {left = l, top = t, bottom = b, right = r}
+	ent.padding = {left = L - l, top = T - t, bottom = B - b, right = R - r}
 	ent.calc_font_size = font_size
 	ent.dirty = false
 end
@@ -189,11 +203,23 @@ function NodeEntity:update(dt)
 end
 
 function NodeEntity:draw(depth, font)
-	if not depth and self.type ~= T.NODE.ROOT then return end
+	if not depth and self.type ~= UI.NODE.ROOT then return end
 	depth = depth or 1
 
 	local conf = self.config or {}
 	local x, y, w, h = self.x, self.y, self.w, self.h
+	if conf.margin then
+		if type(conf.margin) == "number" then
+			x, y = x + conf.margin, y + conf.margin
+			w, h = w - conf.margin * 2, h - conf.margin * 2
+		else
+			local l, t, r, b = unpack(conf.margin)
+			if r == nil then r = l end
+			if b == nil then b = t end
+			x, y = x + l, y + t
+			w, h = w - l - r, h - t - b
+		end
+	end
 	if self.w < 0 or self.h < 0 then return end
 
 	love.graphics.push("all")
@@ -271,7 +297,7 @@ function NodeEntity:draw(depth, font)
 		local lines = 1
 		for _ in conf.text:gmatch("\n") do lines = lines + 1 end
 		local text_height = self.calc_font_size * (lines + 0.25)
-        local ox, oy = (conf.align or T.ALIGN.CENTER)(w - text_width, h - text_height)
+        local ox, oy = (conf.align or UI.ALIGN.CENTER)(w - text_width, h - text_height)
         love.graphics.push()
         love.graphics.translate(math.floor(ox), math.floor(oy))
         love.graphics.print(conf.text, 0, 0)
@@ -295,7 +321,7 @@ function NodeEntity:draw(depth, font)
 end
 
 function NodeEntity:resize(w, h)
-	if self.type ~= T.NODE.ROOT then return end
+	if self.type ~= UI.NODE.ROOT then return end
 	if not self.scene then return end
 	self.w = w
 	self.h = h
@@ -304,7 +330,22 @@ function NodeEntity:resize(w, h)
 end
 
 function NodeEntity:hit_test(x, y)
-	if x >= 0 and y >= 0 and x < self.w and y < self.h then
+	local conf = self.config or {}
+	local ox, oy, dw, dh = 0, 0, 0, 0
+	if conf.margin then
+		if type(conf.margin) == "number" then
+			ox, oy = conf.margin, conf.margin
+			dw, dh = -conf.margin, -conf.margin
+		else
+			local l, t, r, b = unpack(conf.margin)
+			if r == nil then r = l end
+			if b == nil then b = t end
+			ox, oy = l, t
+			dw, dh = -r, -b
+		end
+	end
+
+	if x >= ox and y >= oy and x < self.w + dw and y < self.h + dh then
 		return self
 	end
 end
@@ -324,7 +365,7 @@ end
 
 function NodeEntity:mousemoved(x, y)
 	local was_hovered = self.config.was_hovered
-	if self.type ~= T.NODE.ROOT and not was_hovered then return end
+	if self.type ~= UI.NODE.ROOT and not was_hovered then return end
 	local hit = self:hit_test_recursive(x, y)
 	if was_hovered and hit ~= self then
 		self.config.was_hovered = false
@@ -342,7 +383,7 @@ function NodeEntity:mousemoved(x, y)
 end
 
 function NodeEntity:mousepressed(x, y, ...)
-	if self.type ~= T.NODE.ROOT then return end
+	if self.type ~= UI.NODE.ROOT then return end
 	local hit = self:hit_test_recursive(x, y)
 	if not hit then return end
 	debug("at " .. x .. ", " .. y .. ": " .. tstr(hit))
@@ -352,7 +393,7 @@ function NodeEntity:mousepressed(x, y, ...)
 end
 
 function NodeEntity:mousereleased(x, y, ...)
-	if self.type ~= T.NODE.ROOT then return end
+	if self.type ~= UI.NODE.ROOT then return end
 	local hit = self:hit_test_recursive(x, y)
 	if not hit then return end
 	if hit.config.onunclick then
@@ -361,7 +402,7 @@ function NodeEntity:mousereleased(x, y, ...)
 end
 
 function NodeEntity:wheelmoved(dx, dy)
-	if self.type ~= T.NODE.ROOT then return end
+	if self.type ~= UI.NODE.ROOT then return end
 	local x, y = love.mouse.getPosition()
 	local hit = self:hit_test_recursive(x, y)
 	if not hit then return end
@@ -373,8 +414,8 @@ end
 
 function Scene:addUI(def)
 	local w, h = love.graphics.getDimensions()
-	local ent = UI.NodeEntity:new({}, self, 0, 0, w, h, {type = T.NODE.ROOT, def})
+	local ent = UI.NodeEntity:new({}, self, 0, 0, w, h, {type = UI.NODE.ROOT, def})
 	ent:add(self)
 end
 
-return Class:new(T)
+return Class:new(UI)

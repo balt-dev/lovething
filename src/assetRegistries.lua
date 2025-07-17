@@ -69,3 +69,10 @@ G.REGISTRY_MANAGER:create(
 		return loadstring(data:getString(), "[Scene " .. package .. "." .. key .. "]")()
 	end, nil
 )
+
+G.REGISTRY_MANAGER:create(
+	"src", "lua",
+	function(data, package, key)
+		loadstring(data:getString(), "[packaged code " .. package .. "." .. key .. "]")()
+	end, nil
+)

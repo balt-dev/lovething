@@ -10,6 +10,8 @@ function S:init(def)
 
 	local this = self
 
+	debug(tstr(UI.ProgressBar(function() return this.coroProgress / (this.coroCount or 1) end )))
+
 	self:addUI {
 		type = UI.NODE.ROWS,
 		config = {
@@ -22,24 +24,7 @@ function S:init(def)
 			type = UI.NODE.DIV,
 			config = { text = "Loading...", color = {1, 1, 1, 1}, font_size = {2, "x"}, align = UI.ALIGN.BOTTOM}
 		},
-		{ type = UI.NODE.COLUMNS, config = {sizes = {{1, "fr"}, {2, "fr"}, {1, "fr"}}}, {}, {
-			type = UI.NODE.DIV,
-			config = {
-				border_width = 3,
-				border_color = {1, 1, 1, 1}, margin = 6,
-				pre_draw = function(self, x, y, w, h)
-					local progress = this.coroProgress / math.max(this.coroCount or 1, 1)
-					love.graphics.setColor(1, 1, 1, 1)
-					love.graphics.rectangle(
-						"fill",
-						self.margins.left,
-						self.margins.top,
-						(w - self.margins.right - self.margins.left) * progress,
-						h - self.margins.top - self.margins.bottom
-					)
-				end,
-			},
-		}, {}},
+		UI.ProgressBar(function() return this.coroProgress / (this.coroCount or 1) end, {margin = {50, 6}}),
 		{
 			type = UI.NODE.DIV,
 			config = { text = "0/1", color = {1, 1, 1, 1}, update = function(self, dt)
@@ -47,24 +32,7 @@ function S:init(def)
 			end, align = UI.ALIGN.CENTER}
 		},
 		{},
-		{ type = UI.NODE.COLUMNS, config = {sizes = {{1, "fr"}, {2, "fr"}, {1, "fr"}}}, {}, {
-			type = UI.NODE.DIV,
-			config = {
-				border_width = 3,
-				border_color = {1, 1, 1, 1}, margin = 6,
-				pre_draw = function(self, x, y, w, h)
-					local progress = this.totalProgress / math.max(this.totalCount or 1, 1)
-					love.graphics.setColor(1, 1, 1, 1)
-					love.graphics.rectangle(
-						"fill",
-						self.margins.left,
-						self.margins.top,
-						(w - self.margins.right - self.margins.left) * progress,
-						h - self.margins.top - self.margins.bottom
-					)
-				end,
-			},
-		}, {}},
+		UI.ProgressBar(function() return this.totalProgress / (this.totalCount or 1) end, {margin = {50, 6}} ),
 		{
 			type = UI.NODE.DIV,
 			config = { text = "0/1", color = {1, 1, 1, 1}, update = function(self, dt)
@@ -117,7 +85,7 @@ function S:update(dt)
 
 	local done = true
 	local toRemove = {}
-	while love.timer.getTime() - lastUpdate <= 0.02 or firstIter do
+	while --[[ love.timer.getTime() - lastUpdate <= 0.03 or ]] firstIter do
 		firstIter = false
 		for key, coro in pairs(self.loadCoroutines) do
 			done = false
